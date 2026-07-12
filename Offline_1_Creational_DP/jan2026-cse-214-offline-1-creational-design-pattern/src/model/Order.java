@@ -32,21 +32,21 @@ public class Order {
     private final List<OrderItem> items;
     private final String specialInstructions;
 
-    Order(OrderBuilder builder) {
-        this.orderId = builder.orderId;
-        this.customerName = builder.customerName;
-        this.phone = builder.phone;
-        this.deliveryType = builder.deliveryType;
-        this.deliveryAddress = builder.deliveryAddress;
-        this.paymentMethod = builder.paymentMethod;
-        this.scheduledTime = builder.scheduledTime;
-        this.couponCode = builder.couponCode;
-        this.giftWrap = builder.giftWrap;
-        this.cutleryRequired = builder.cutleryRequired;
-        this.loyaltyPointsToRedeem = builder.loyaltyPointsToRedeem;
-        this.rushOrder = builder.rushOrder;
-        this.items = builder.items;
-        this.specialInstructions = builder.specialInstructions;
+    Order(OrderBuilder b) {
+        this.orderId = b.orderId;
+        this.customerName = b.customerName;
+        this.phone = b.phone;
+        this.deliveryType = b.deliveryType;
+        this.deliveryAddress = b.deliveryAddress;
+        this.paymentMethod = b.paymentMethod;
+        this.scheduledTime = b.scheduledTime;
+        this.couponCode = b.couponCode;
+        this.giftWrap = b.giftWrap;
+        this.cutleryRequired = b.cutleryRequired;
+        this.loyaltyPointsToRedeem = b.loyaltyPointsToRedeem;
+        this.rushOrder = b.rushOrder;
+        this.items = b.items;
+        this.specialInstructions = b.specialInstructions;
     }
 
     public String getOrderId() {
@@ -147,3 +147,4 @@ public class Order {
 // echo TestHarness.java >> sources.txt
 // javac -d out @sources.txt
 // java -cp out TestHarness
+// java -cp out Main

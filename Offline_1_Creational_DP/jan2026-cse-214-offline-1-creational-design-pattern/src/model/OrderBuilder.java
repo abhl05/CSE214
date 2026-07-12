@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class OrderBuilder {
+public class OrderBuilder implements IBuilder {
     // required fields
     String orderId;
     String customerName;
