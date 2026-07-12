@@ -1,10 +1,7 @@
 package model;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Represents a placed food order.
@@ -142,3 +139,11 @@ public class Order {
         return Math.max(0.0, getSubtotal() + getServiceCharges() - getDiscount());
     }
 }
+
+
+// if not exist out mkdir out
+// if exist sources.txt del sources.txt
+// for /R src %f in (*.java) do @echo %f >> sources.txt
+// echo TestHarness.java >> sources.txt
+// javac -d out @sources.txt
+// java -cp out TestHarness
