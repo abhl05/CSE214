@@ -1,16 +1,13 @@
 package service;
 
-import model.DeliveryType;
-import model.MenuItem;
-import model.Order;
-import model.OrderItem;
-import model.PaymentMethod;
-import model.Size;
-import model.OrderBuilder;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import model.MenuItem;
+import model.Order;
+import model.OrderBuilder;
+import model.OrderItem;
+import model.Size;
 
 /**
  * Coordinates order creation.
@@ -20,6 +17,7 @@ import java.util.List;
  */
 public class OrderService {
     private int nextNumber = 1001;
+    private final OrderDirector orderDirector = new OrderDirector();
 
     public OrderItem createOrderItem(MenuItem item, int quantity, Size size, boolean extraCheese, boolean spicy, String note) {
         return new OrderItem(item, quantity, size, extraCheese, spicy, note);
@@ -33,21 +31,20 @@ public class OrderService {
                                      boolean rushOrder,
                                      String specialInstructions) {
                                         
-        return new OrderBuilder(nextOrderId(), customerName, phone, items)
-                .setDeliveryType(DeliveryType.DELIVERY)
-                .setDeliveryAddress(address)
-                .setPaymentMethod(PaymentMethod.CASH)
-                .setCouponCode(couponCode)
-                .setRushOrder(rushOrder)
-                .setSpecialInstructions(specialInstructions)
-                .build();
+        OrderBuilder builder = new OrderBuilder(nextOrderId(), customerName, phone, items);
+        OrderBuilder orderBuilder = orderDirector.constructDeliveryOrder(builder, 
+                                                           address, 
+                                                           couponCode, 
+                                                           rushOrder, 
+                                                           specialInstructions);
+            return orderBuilder.build();
     }
 
     public Order createPickupOrder(String customerName, String phone, List<OrderItem> items) {
 
-        return new OrderBuilder(nextOrderId(), customerName, phone, items)
-                .setDeliveryType(DeliveryType.PICKUP)
-                .build();
+        OrderBuilder builder = new OrderBuilder(nextOrderId(), customerName, phone, items);
+        OrderBuilder orderBuilder = orderDirector.constructPickupOrder(builder);
+        return orderBuilder.build();
     }
 
     public Order createScheduledGiftOrder(String customerName,
@@ -56,17 +53,9 @@ public class OrderService {
                                           List<OrderItem> items,
                                           LocalDateTime scheduledTime) {
 
-        return new OrderBuilder(nextOrderId(), customerName, phone, items)
-                .setDeliveryType(DeliveryType.DELIVERY)
-                .setDeliveryAddress(address)
-                .setPaymentMethod(PaymentMethod.CARD)
-                .setScheduledTime(scheduledTime)
-                .setCouponCode("WELCOME10")
-                .setGiftWrap(true)
-                .setCutleryRequired(false)
-                .setLoyaltyPointsToRedeem(25)
-                .setSpecialInstructions("Please call before delivery")
-                .build();
+        OrderBuilder builder = new OrderBuilder(nextOrderId(), customerName, phone, items);
+        OrderBuilder orderBuilder = orderDirector.constructScheduledGiftOrder(builder, address, scheduledTime);
+        return orderBuilder.build();
     }
 
     public Order createSampleFamilyOrder(MenuCatalog catalog) {
@@ -76,16 +65,9 @@ public class OrderService {
         items.add(new OrderItem(catalog.findByCode("D02"), 4, Size.MEDIUM, false, false, "less sugar"));
         items.add(new OrderItem(catalog.findByCode("S02"), 2, Size.LARGE, false, true, ""));
 
-        return new OrderBuilder(nextOrderId(), "Sample Family", "01711111111", items)
-                .setDeliveryType(DeliveryType.DELIVERY)
-                .setDeliveryAddress("House 25, Road 4, Dhanmondi")
-                .setPaymentMethod(PaymentMethod.MOBILE_BANKING)
-                .setCouponCode("FAMILY15")
-                .setCutleryRequired(true)
-                .setLoyaltyPointsToRedeem(50)
-                .setRushOrder(true)
-                .setSpecialInstructions("Deliver together")
-                .build();
+        OrderBuilder builder = new OrderBuilder(nextOrderId(), "Sample Family", "01711111111", items);
+        OrderBuilder orderBuilder = orderDirector.constructSampleFamilyOrder(builder);
+        return orderBuilder.build();
     }
 
     private String nextOrderId() {
