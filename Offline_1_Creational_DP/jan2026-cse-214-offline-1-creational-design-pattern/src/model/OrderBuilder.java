@@ -29,8 +29,7 @@ public class OrderBuilder {
         this.orderId = orderId;
         this.customerName = customerName;
         this.phone = phone;
-        Objects.requireNonNull(items, "Items cannot be null");
-        this.items = new ArrayList<>(items); // defensive copy
+        this.items = items != null ? new ArrayList<>(items) : new ArrayList<>();
     }
 
     public OrderBuilder setDeliveryType(DeliveryType deliveryType) {
@@ -99,7 +98,8 @@ public class OrderBuilder {
         } else {
             this.deliveryAddress = this.deliveryAddress != null ? this.deliveryAddress.trim() : "";
         }
- 
+
+        Objects.requireNonNull(items, "Items cannot be null");
         if (this.items.isEmpty()) {
             throw new IllegalArgumentException("Order must contain at least one item");
         }
