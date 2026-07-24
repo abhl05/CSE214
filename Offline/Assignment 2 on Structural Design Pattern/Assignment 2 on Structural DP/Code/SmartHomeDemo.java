@@ -1,467 +1,432 @@
 import java.util.*;
-
-interface NexaInterface {
-    void setGuestMode(boolean guestMode, Set<String> guestAllowed);
-
-    void setEcoMode(boolean ecoMode, double ecoBudget);
+interface SmartDevice {
+    void activate();
+    void deactivate();
+    double getPowerUsage();
+    String getStatus();
 }
 
-class Home implements NexaInterface {
-    String name;
-    List<Room> roomsList = new ArrayList<>();
-    // Home-level eco/guest — duplicated from Room
-    boolean ecoMode = false;
-    double ecoBudget = 0;
-    boolean guestMode = false;
-    Set<String> guestAllowed = new HashSet<>();
+interface DeviceGroup extends SmartDevice {
+    List<SmartDevice> getChildren();
+}
 
-    Home(String name) { this.name = name; }
-    void addRoom(Room r) { roomsList.add(r); }
+class SmartLight implements SmartDevice {
+    private boolean on = false;
 
-    void activate() {
-        for (Room r : roomsList) r.activate();
-        // Home-level eco — completely separate logic from Room-level eco
-        if (ecoMode && getPowerUsage() > ecoBudget) {
-            // Shed entire rooms in reverse order... ugly
-            for (int i = roomsList.size() - 1; i >= 0 && getPowerUsage() > ecoBudget; i--) {
-                roomsList.get(i).deactivate();
-            }
-        }
-    }
-
-    void deactivate() {
-        for (Room r : roomsList) r.deactivate();
-    }
-
-    double getPowerUsage() {
-        double total = 0;
-        for (Room r : roomsList) total += r.getPowerUsage();
-        return total;
-    }
-
-    String getStatus() {
-        StringBuilder sb = new StringBuilder("=== " + name + " ===");
-        if (ecoMode) sb.insert(0, "[ECO: " + ecoBudget + "W budget]\n");
-        if (guestMode) sb.insert(0, "[GUEST MODE]\n");
-        for (Room r : roomsList) sb.append("\n").append(r.getStatus());
-        return sb.toString();
-    }
     @Override
-    public void setGuestMode(boolean guestMode, Set<String> guestAllowed) {
-        this.guestMode = guestMode;
-        this.guestAllowed = guestAllowed;
-        for(Room r : roomsList) {
-            r.setGuestMode(guestMode, guestAllowed);
-        }
+    public void activate() {
+        this.on = true;
     }
+
     @Override
-    public void setEcoMode(boolean ecoMode, double ecoBudget) {
-        this.ecoMode = ecoMode;
-        this.ecoBudget = ecoBudget;
-        for(Room r : roomsList) {
-            r.setEcoMode(ecoMode, ecoBudget);
-        }
+    public void deactivate() {
+        this.on = false;
+    }
+
+    @Override
+    public double getPowerUsage() {
+        return on ? 10.0 : 0.0; 
+    }
+
+    @Override
+    public String getStatus() {
+        return "Light: " + (on ? "ON" : "OFF");
     }
 }
 
-class Room implements NexaInterface {
-    String name;
+class SmartThermostat implements SmartDevice {
+    private boolean on = false;
 
-    List<SmartDevice> devicesList = new ArrayList<>();
-
-    // Room-level enhancement flags
-    boolean ecoMode = false;
-    double ecoBudget = 0;
-    boolean guestMode = false;
-    Set<String> guestAllowed = new HashSet<>(); // "light", "thermostat", "speaker"
-
-    Room(String name) { this.name = name; }
-
-    void addDevice(SmartDevice d) {
-        devicesList.add(d);
+    @Override
+    public void activate() {
+        this.on = true;
     }
 
-    void activate() {
-        for (SmartDevice d : devicesList) {
-            if(guestMode && guestAllowed.contains(d.getClass().getName().toLowerCase())) continue;
+    @Override
+    public void deactivate() {
+        this.on = false;
+    }
+
+    @Override
+    public double getPowerUsage() {
+        return on ? 150.0 : 0.0;
+    }
+
+    @Override
+    public String getStatus() {
+        return "Thermostat: " + (on ? "ON" : "OFF"); 
+    }
+
+}
+
+
+class SmartSpeaker implements SmartDevice {
+    private boolean on = false;
+
+    @Override
+    public void activate() {
+        this.on = true;
+    }
+
+    @Override
+    public void deactivate() {
+        this.on = false;
+    }
+
+    @Override
+    public double getPowerUsage() {
+        return on ? 5.0 : 0.0;
+    }
+
+    @Override
+    public String getStatus() {
+        return "Speaker: " + (on ? "Playing" : "Idle");
+    }
+    
+}
+
+class Room implements DeviceGroup {
+    private final String name;
+    private final List<SmartDevice> children = new ArrayList<>();
+
+    public Room(String name) {
+        this.name = name;
+    }
+
+    public void addDevice(SmartDevice d) {
+        children.add(d);
+    }
+
+    @Override
+    public List<SmartDevice> getChildren() {
+        return children;
+    }
+
+    @Override
+    public void activate() {
+        for(SmartDevice d : children) {
             d.activate();
         }
+    }
 
-        // EcoMode: shed in reverse insertion order
-        if (ecoMode && getPowerUsage() > ecoBudget) {
-            for (int i = devicesList.size() - 1; i >= 0 && getPowerUsage() > ecoBudget; i--) {
-                SmartDevice dev = devicesList.get(i);
-                dev.deactivate();
-                System.out.println("    >> EcoMode: shed [" + dev.getStatus() + "]");
-            }
+    @Override
+    public void deactivate() {
+        for(SmartDevice d : children) {
+            d.deactivate();
         }
     }
 
-    void deactivate() {
-        for (SmartDevice d : devicesList) d.deactivate();
-    }
-
-    double getPowerUsage() {
+    @Override
+    public double getPowerUsage() {
         double total = 0;
-        for(SmartDevice d : devicesList) {
+        for(SmartDevice d : children) {
             total += d.getPowerUsage();
         }
         return total;
     }
 
-    String getStatus() {
+    @Override
+    public String getStatus() {
         StringBuilder sb = new StringBuilder("[" + name + "]");
-        if (ecoMode) sb.insert(0, "[ECO: " + ecoBudget + "W budget]\n");
-        if (guestMode) sb.insert(0, "[GUEST MODE]\n");
-
-        // Can't just loop "devices" — have to loop each list separately
-        for (SmartDevice dev : devicesList) {
-            String className = dev.getClass().getName().toLowerCase();
-            sb.append("\n  ").append(dev.getStatus());
-            if (guestMode && !guestAllowed.contains(className))
-                sb.append(" [guest-restricted]");
+        for (SmartDevice d : children) {
+            sb.append("\n  ").append(d.getStatus());
         }
-        
+        return sb.toString();
+    }
+}
+
+class Home implements DeviceGroup {
+    private final String name;
+    private final List<SmartDevice> rooms = new ArrayList<>();
+
+    public Home(String name) {
+        this.name = name;
+    }
+
+    public void addRoom(SmartDevice r) {
+        rooms.add(r);
+    }
+
+    @Override
+    public void activate() {
+        for(SmartDevice r : rooms) {
+            r.activate();
+        }
+    }
+
+    @Override
+    public void deactivate() {
+        for(SmartDevice r : rooms) {
+            r.deactivate();
+        }
+    }
+
+    @Override
+    public double getPowerUsage() {
+        double total = 0;
+        for (SmartDevice r : rooms) {
+            total += r.getPowerUsage();
+        }
+        return total;
+    }
+
+    @Override
+    public String getStatus() {
+        StringBuilder sb = new StringBuilder("=== " + name + " ===");
+        for (SmartDevice r : rooms) {
+            sb.append("\n").append(r.getStatus());
+        }
         return sb.toString();
     }
 
     @Override
-    public void setGuestMode(boolean guestMode, Set<String> guestAllowed) {
-        this.guestMode = guestMode;
-        this.guestAllowed = guestAllowed;
-        for(SmartDevice d : devicesList) {
-            String className = d.getClass().getName().toLowerCase();
-            if(guestAllowed.contains(className)) {
-                d.guestAccess = false;
-            } 
-        }
-    }
-
-    @Override
-    public void setEcoMode(boolean ecoMode, double ecoBudget) {
-        this.ecoMode = ecoMode;
-        this.ecoBudget = ecoBudget;
+    public List<SmartDevice> getChildren() {
+        return rooms;
     }
 }
 
-abstract class SmartDevice {
-    // Pro upgrade flags
-    boolean accessRestricted;
-    int pin;
-    boolean locked;
-    boolean timerControlled;
-    int timerSeconds;
-    boolean timerRunning;
-    boolean powerThrottled;
-    double powerCap;
-    boolean guestAccess;
+abstract class DeviceDecorator implements SmartDevice {
+    protected final SmartDevice wrappee;
 
-    abstract public void activate();
-
-    abstract public void deactivate();
-
-    abstract public double getPowerUsage();
-
-    abstract public String getStatus();
-
-    abstract void setAccessRestricted(int pin, boolean locked);
-
-    abstract void setTimerControlled(int timerSeconds);
-
-    abstract void setPowerThrottled(double powerCap);
-}
-
-class SmartLight extends SmartDevice {
-    boolean on = false;
-    boolean guestAccess = true;
-    
-    @Override
-    public void activate() {
-        if (accessRestricted && locked) return;
-        on = true;
-        if (timerControlled) timerRunning = true;
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                deactivate();
-            }
-        }, timerSeconds*1000);   
-    }
-
-    @Override
-    public void deactivate() {
-        if (accessRestricted && locked) return;
-        on = false;
-        timerRunning = false;
-    }
-
-    @Override
-    public double getPowerUsage() {
-        double p = on ? 10.0 : 0.0;
-        if (powerThrottled && p > powerCap) p = powerCap;
-        return p;
-    }
-
-    @Override
-    public String getStatus() {
-        String s = "Light: " + (on ? "ON" : "OFF");
-        if (accessRestricted && locked) s += " [LOCKED]";
-        if (timerControlled && timerRunning) s += " (auto-off in " + timerSeconds + "s)";
-        if (powerThrottled && on && 10.0 > powerCap) s += " [throttled to " + powerCap + "W]";
-        return s;
-    }
-
-    @Override
-    public void setAccessRestricted(int pin, boolean locked) {
-        accessRestricted = false;
-        pin = 0;
-        locked = false;
-    }
-
-    @Override
-    public void setTimerControlled(int timerSeconds) {
-        timerControlled = false;
-        timerSeconds = 0;
-        timerRunning = false;
-    }
-
-    @Override
-    public void setPowerThrottled(double powerCap) {
-        powerThrottled = false;
-        powerCap = 0;
-    }
-}
-
-class SmartThermostat extends SmartDevice {
-    boolean on = false;
-    boolean guestAccess = true;
-
-    @Override
-    public void activate() {
-        if (accessRestricted && locked) return;
-        on = true;
-        if (timerControlled) timerRunning = true;
-
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                deactivate();
-            }
-        }, timerSeconds*1000);  
-    }
-
-    @Override
-    public void deactivate() {
-        if (accessRestricted && locked) return;
-        on = false;
-        timerRunning = false;
-    }
-    
-    @Override
-    public double getPowerUsage() {
-        double p = on ? 150.0 : 0.0;
-        if (powerThrottled && p > powerCap) p = powerCap;
-        return p;
-    }
-
-    @Override
-    public String getStatus() {
-        String s = "Thermostat: " + (on ? "ON" : "OFF");
-        if (accessRestricted && locked) s += " [LOCKED]";
-        if (timerControlled && timerRunning) s += " (auto-off in " + timerSeconds + "s)";
-        if (powerThrottled && on && 150.0 > powerCap) s += " [throttled to " + powerCap + "W]";
-        return s;
-    }
-
-    @Override
-    public void setAccessRestricted(int pin, boolean locked) {
-        accessRestricted = false;
-        pin = 0;
-        locked = false;
-    }
-
-    @Override
-    public void setTimerControlled(int timerSeconds) {
-        timerControlled = false;
-        timerSeconds = 0;
-        timerRunning = false;
-    }
-
-    @Override
-    public void setPowerThrottled(double powerCap) {
-        powerThrottled = false;
-        powerCap = 0;
-    }
-}
-
-class SmartSpeaker extends SmartDevice {
-    boolean on = false;
-    boolean guestAccess = true;
-
-    @Override
-    public void activate() {
-        if (accessRestricted && locked) return;
-        on = true;
-        if (timerControlled) timerRunning = true;
-
-        // no timer for speaker, can be implemented
-
-        // new Timer().schedule(new TimerTask() {
-        //     @Override
-        //     public void run() {
-        //         deactivate();
-        //     }
-        // }, timerSeconds*1000);  
-    }
-    
-    @Override
-    public void deactivate() {
-        if (accessRestricted && locked) return;
-        on = false;
-        timerRunning = false;
-    }
-    
-    @Override
-    public double getPowerUsage() {
-        double p = on ? 5.0 : 0.0;
-        if (powerThrottled && p > powerCap) p = powerCap;
-        return p;
-    }
-    
-    @Override
-    public String getStatus() {
-        String s = "Speaker: " + (on ? "Playing" : "Idle");
-        if (accessRestricted && locked) s += " [LOCKED]";
-        if (timerControlled && timerRunning) s += " (auto-off in " + timerSeconds + "s)";
-        if (powerThrottled && on && 5.0 > powerCap) s += " [throttled to " + powerCap + "W]";
-        return s;
-    }
-
-    @Override
-    public void setAccessRestricted(int pin, boolean locked) {
-        accessRestricted = false;
-        pin = 0;
-        locked = false;
-    }
-
-    @Override
-    public void setTimerControlled(int timerSeconds) {
-        timerControlled = false;
-        timerSeconds = 0;
-        timerRunning = false;
-    }
-
-    @Override
-    public void setPowerThrottled(double powerCap) {
-        powerThrottled = false;
-        powerCap = 0;
-    }
-}
-
-class BaseDeco extends SmartDevice{
-    SmartDevice decoDevice;
-
-    public BaseDeco(SmartDevice c) {
-        decoDevice = c;
-    }
-
-    @Override
-    public void setAccessRestricted(int pin, boolean locked) {
-        decoDevice.setAccessRestricted(pin, locked);
-    }
-
-    @Override
-    public void setTimerControlled(int timerSeconds) {
-        decoDevice.setTimerControlled(timerSeconds);
-    }
-
-    @Override
-    public void setPowerThrottled(double powerCap) {
-        decoDevice.setPowerThrottled(powerCap);
+    public DeviceDecorator(SmartDevice d) {
+        this.wrappee = d;
     }
 
     @Override
     public void activate() {
-        decoDevice.activate();
+        wrappee.activate();
     }
 
     @Override
     public void deactivate() {
-        decoDevice.deactivate();
+        wrappee.deactivate();
     }
 
     @Override
     public double getPowerUsage() {
-        return decoDevice.getPowerUsage();
+        return wrappee.getPowerUsage();
     }
 
     @Override
     public String getStatus() {
-        return decoDevice.getStatus();
+        return wrappee.getStatus();
     }
-    }
-class AccessRestricted extends BaseDeco {
 
-    public AccessRestricted(SmartDevice c, int pin) {
-        super(c);
-        if(!accessRestricted) {
-            decoDevice.accessRestricted = true;
-            decoDevice.pin = pin;
-        }
+    public SmartDevice getWrapped() { return wrappee; }
+}
+
+class AccessRestricted extends DeviceDecorator {
+    private final int pin;
+    private boolean locked = true;
+
+    public AccessRestricted(SmartDevice d, int pin) {
+        super(d);
+        this.pin = pin;
     }
 
     public void unlock(int pin) {
-        if(decoDevice.pin == pin) {
-            decoDevice.accessRestricted = false;
+        if (this.pin == pin) {
+            locked = false;
         }
+    }
+
+    @Override
+    public void activate() {
+        if(locked) return;
+        super.activate();
+    }
+
+    @Override
+    public void deactivate() {
+        if(locked) return;
+        super.deactivate();
+    }
+
+    @Override
+    public String getStatus() {
+        String status = super.getStatus();
+        return locked ? status + " [LOCKED]" : status;
     }
 }
 
-class TimerControlled extends BaseDeco {
+class TimerControlled extends DeviceDecorator {
+    private final int timerSeconds;
+    private boolean timerRunning = false;
 
-    public TimerControlled(SmartDevice c, int timerSeconds) {
-        super(c);
-        if(!timerControlled) {
-            timerControlled = true;
-        }
-        decoDevice.timerSeconds = timerSeconds;
+    public TimerControlled(SmartDevice d, int timerSeconds) {
+        super(d);
+        this.timerSeconds = timerSeconds;
+    }
+
+    @Override
+    public void activate() {
+        super.activate();
+        timerRunning = true;
+    }
+
+    @Override
+    public void deactivate() {
+        super.deactivate();
+        timerRunning = false;
     }
 
     public void simulateTimerExpiry() {
-        decoDevice.timerSeconds = 0;
-        decoDevice.timerControlled = false;
-        decoDevice.deactivate();
-    }
-}
-
-class PowerThrottled extends BaseDeco {
-
-    public PowerThrottled(SmartDevice c, double powerCap) {
-        super(c);
-        if(!powerThrottled) {
-            powerThrottled = true;
+        if (timerRunning) {
+            wrappee.deactivate();
+            timerRunning = false;
         }
-        decoDevice.powerCap = powerCap;
+    }
+
+    @Override
+    public String getStatus() {
+        String status = super.getStatus();
+        return timerRunning ? status + " (auto-off in " + timerSeconds + "s)" : status;
     }
 }
 
-class EcoMode extends BaseDeco {
-
-    public EcoMode() {
-        super(null);
+class PowerThrottled extends DeviceDecorator {
+    private final double cap;
+ 
+    public PowerThrottled(SmartDevice d, double cap) {
+        super(d);
+        this.cap = cap;
     }
-    
+ 
+    @Override
+    public double getPowerUsage() {
+        return Math.min(super.getPowerUsage(), cap);
+    }
+ 
+    @Override
+    public String getStatus() {
+        String status = super.getStatus();
+        double raw = super.getPowerUsage();
+        if (raw > cap) status += " [throttled to " + cap + "W]";
+        return status;
+    }
 }
 
+class EcoMode implements DeviceGroup {
+    private final DeviceGroup group;
+    private final double powerBudget;
 
+    public EcoMode(DeviceGroup group, double powerBudget) {
+        this.group = group;
+        this.powerBudget = powerBudget;
+    }
 
+    @Override
+    public List<SmartDevice> getChildren() {
+        return group.getChildren();
+    }
 
+    @Override
+    public void activate() {
+        group.activate();
+        List<SmartDevice> children = group.getChildren();
 
+        for (int i = children.size() - 1; i >= 0 && group.getPowerUsage() > powerBudget; i--) {
+            children.get(i).deactivate();
+        }
+    }
 
+    @Override
+    public void deactivate() {
+        group.deactivate();
+    }
 
+    @Override
+    public double getPowerUsage() {
+        return group.getPowerUsage();
+    }
 
+    @Override
+    public String getStatus() {
+        return "[ECO: " + powerBudget + "W budget]\n" + group.getStatus();
+    }
+}
+
+class GuestMode implements DeviceGroup {
+    private final DeviceGroup group;
+    private final Set<Class<?>> guestAllowed;
+
+    public GuestMode(DeviceGroup group, Set<Class<?>> guestAllowed) {
+        this.group = group;
+        this.guestAllowed = guestAllowed;
+    }
+
+    private boolean isAllowed(SmartDevice device) {
+        SmartDevice current = device;
+        while (current instanceof DeviceDecorator) {
+            current = ((DeviceDecorator) current).getWrapped();
+        }
+        return guestAllowed.contains(current.getClass());
+    }
+
+    @Override
+    public void activate() {
+        for (SmartDevice child : group.getChildren()) {
+            if (isAllowed(child)) child.activate(); // others silently skipped
+        }
+    }
+ 
+    @Override
+    public void deactivate() {
+        group.deactivate();
+    }
+ 
+    @Override
+    public double getPowerUsage() {
+        double total = 0;
+        for (SmartDevice child : group.getChildren()) {
+            if (isAllowed(child)) total += child.getPowerUsage();
+        }
+        return total;
+    }
+ 
+    @Override
+    public String getStatus() {
+        StringBuilder sb = new StringBuilder("[GUEST MODE]");
+        for (SmartDevice child : group.getChildren()) {
+            sb.append("\n  ").append(child.getStatus());
+            if (!isAllowed(child)) sb.append(" [guest-restricted]");
+        }
+        return sb.toString();
+    }
+ 
+    @Override
+    public List<SmartDevice> getChildren() {
+        return group.getChildren();
+    }
+}
 
 public class SmartHomeDemo {
-
+    public static void main(String[] args) {
+        System.out.println("=== Order sensitivity demo ===");
+ 
+        // Setup 1: throttle the thermostat to 80W BEFORE eco-wrapping the room.
+        Room room1 = new Room("Lab-1");
+        room1.addDevice(new SmartLight());                              // 10W
+        room1.addDevice(new SmartLight());                              // 10W
+        room1.addDevice(new PowerThrottled(new SmartThermostat(), 80));  // capped 80W
+        SmartDevice eco1 = new EcoMode(room1, 100);
+        eco1.activate();
+        System.out.println("Throttled-then-Eco: " + eco1.getPowerUsage() + "W");
+        System.out.println(eco1.getStatus());
+ 
+        // Setup 2: same devices, but a raw (unthrottled) thermostat.
+        Room room2 = new Room("Lab-2");
+        room2.addDevice(new SmartLight());       // 10W
+        room2.addDevice(new SmartLight());       // 10W
+        room2.addDevice(new SmartThermostat());  // 150W raw
+        SmartDevice eco2 = new EcoMode(room2, 100);
+        eco2.activate();
+        System.out.println("\nRaw-then-Eco: " + eco2.getPowerUsage() + "W");
+        System.out.println(eco2.getStatus());
+ 
+        System.out.println("\n>> Same devices, same budget, different order of "
+                + "enhancement -> different outcome (" + eco1.getPowerUsage()
+                + "W vs " + eco2.getPowerUsage() + "W).");
+    }
 
 }
