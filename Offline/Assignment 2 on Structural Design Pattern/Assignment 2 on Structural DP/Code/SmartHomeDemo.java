@@ -261,7 +261,7 @@ class TimerControlled extends DeviceDecorator {
     @Override
     public void activate() {
         super.activate();
-        timerRunning = true;
+        timerRunning = wrappee.getPowerUsage() > 0;
     }
 
     @Override
@@ -365,8 +365,9 @@ class GuestMode implements DeviceGroup {
 
     @Override
     public void activate() {
+        group.activate();
         for (SmartDevice child : group.getChildren()) {
-            if (isAllowed(child)) child.activate(); // others silently skipped
+            if (!isAllowed(child)) child.deactivate();
         }
     }
  
@@ -424,8 +425,9 @@ public class SmartHomeDemo {
         System.out.println("\nRaw-then-Eco: " + eco2.getPowerUsage() + "W");
         System.out.println(eco2.getStatus());
  
-        System.out.println("\n>> Same devices, same budget, different order of "
-                + "enhancement -> different outcome (" + eco1.getPowerUsage()
+        System.out.println("""
+                           
+                           >> Same devices, same budget, different order of enhancement -> different outcome (""" + eco1.getPowerUsage()
                 + "W vs " + eco2.getPowerUsage() + "W).");
     }
 
