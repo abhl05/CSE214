@@ -401,7 +401,7 @@ class GuestMode implements DeviceGroup {
     }
 }
 
-public class SmartHomeDemo {
+public class SmartHome {
     public static void main(String[] args) {
         System.out.println("=== Order sensitivity demo ===");
  
