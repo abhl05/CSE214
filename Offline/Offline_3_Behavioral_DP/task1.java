@@ -62,7 +62,7 @@ class BDAlert implements Publisher {
 
     @Override
     public void notifySubscribers(AlertInfo alertInfo) {
-        for (Observer citizen : subscribers.get(alertInfo.getAlertType())) {
+        for (Observer citizen : subscribers.getOrDefault(alertInfo.getAlertType(), new ArrayList<>())) {
             citizen.update(alertInfo);
         }
     }

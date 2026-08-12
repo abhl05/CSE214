@@ -15,14 +15,14 @@ enum ProcessingState {
 }
 
 abstract class Collegue {
-    protected final ResultCoordinator mediator;
-    Collegue(ResultCoordinator mediator) {
+    protected final Mediator mediator;
+    Collegue(Mediator mediator) {
         this.mediator = mediator;
     }
 }
 
 class DepartmentOffice extends Collegue {
-    DepartmentOffice(ResultCoordinator mediator) {
+    DepartmentOffice(Mediator mediator) {
         super(mediator);
     }
 
@@ -33,7 +33,7 @@ class DepartmentOffice extends Collegue {
 }
 
 class COEOffice extends Collegue {
-    COEOffice(ResultCoordinator mediator) {
+    COEOffice(Mediator mediator) {
         super(mediator);
     }
 
@@ -49,7 +49,7 @@ class COEOffice extends Collegue {
 }
 
 class DSW extends Collegue {
-    DSW(ResultCoordinator mediator) {
+    DSW(Mediator mediator) {
         super(mediator);
     }
 
@@ -63,14 +63,10 @@ class Student extends Collegue {
     private String studentId;
     private String name;
 
-    Student(ResultCoordinator mediator, String studentId, String name) {
+    Student(Mediator mediator, String studentId, String name) {
         super(mediator);
         this.studentId = studentId;
         this.name = name;
-    }
-
-    String getStudentId() {
-        return studentId;
     }
 
     void register() {
@@ -104,6 +100,11 @@ class ResultCoordinator implements Mediator {
  
     @Override
     public void submitDepartmentConfirmation(String studentId) {
+        ProcessingState state = statusMap.get(studentId);
+        if (state != ProcessingState.REGISTERED) {
+            System.out.println("[Coordinator] REJECTED: departmental confirmation cannot be submitted before registration (" + studentId + ")");
+            return;
+        }
         statusMap.put(studentId, ProcessingState.DEPT_CONFIRMED);
         System.out.println("[Coordinator] Departmental confirmation recorded for " + studentId);
     }
@@ -153,14 +154,14 @@ class ResultCoordinator implements Mediator {
 
 public class task2 {
     public static void main(String[] args) {
-        ResultCoordinator coordinator = new ResultCoordinator();
+        Mediator coordinator = new ResultCoordinator();
  
         DepartmentOffice deptOffice = new DepartmentOffice(coordinator);
         COEOffice controller = new COEOffice(coordinator);
         DSW dsw = new DSW(coordinator);
  
         Student student = new Student(coordinator, "2005001", "Abhi");
-        coordinator.registerStudent(student);
+        student.register();
  
         System.out.println("\n-- Step 1: Attempt to publish result before departmental confirmation --");
         controller.publishOfficeOrder(student.getId());
