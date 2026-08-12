@@ -1,7 +1,9 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 interface Publisher {
+    void register(Observer citizen);
     
     void subscribe(Observer citizen, String alertCategory); 
     
@@ -49,10 +51,23 @@ class AlertInfo {
 // Concrete alert classes
 
 class BDAlert implements Publisher {
+    private List<Observer> registeredCitizens = new ArrayList<>();
     private Map<String, ArrayList<Observer>> subscribers = new HashMap<>();
 
     @Override
+    public void register(Observer citizen) {
+        if (!registeredCitizens.contains(citizen)) {
+            registeredCitizens.add(citizen);
+            System.out.println(citizen.getName() + " registered in the system.");
+        }
+    }
+
+    @Override
     public void subscribe(Observer citizen, String alertCategory) {
+        if(!registeredCitizens.contains(citizen)) {
+            System.out.println(citizen.getName() + " is not registered. Cannot subscribe to alerts.");
+            return;
+        }
         subscribers.putIfAbsent(alertCategory, new ArrayList<>());
         if (!subscribers.get(alertCategory).contains(citizen)) {
             subscribers.get(alertCategory).add(citizen);
@@ -116,6 +131,9 @@ public class task1 {
         Citizen abhi  = new Citizen("Abhi");
         Citizen mina  = new Citizen("Mina");
         Citizen karim = new Citizen("Karim");
+        system.register(abhi);
+        system.register(mina);
+        system.register(karim);
  
         // 2. Subscribe citizens to categories
         system.subscribe(abhi, "EARTHQUAKE");
@@ -136,6 +154,7 @@ public class task1 {
  
         // 6. A newly registered/subscribed citizen must only receive FUTURE alerts
         Citizen rina = new Citizen("Rina");
+        system.register(rina);
         system.subscribe(rina, "FLOOD");
  
         // Publish more alerts to verify the subscription update and the "future alerts only" rule

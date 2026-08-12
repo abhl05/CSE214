@@ -8,6 +8,7 @@ interface Mediator {
     void issueTestimonial(String studentId);
     void issueCertificateAndTranscript(String studentId);
     void showStatus(String studentId);
+    void registerOffice(String role, Collegue office);
 }
 
 enum ProcessingState {
@@ -90,6 +91,13 @@ class Student extends Collegue {
 class ResultCoordinator implements Mediator {
     private final Map<String, Student> students = new HashMap<>();
     private final Map<String, ProcessingState> statusMap = new HashMap<>();
+    private final Map<String, Collegue> registeredOffices = new HashMap<>();
+
+    @Override
+    public void registerOffice(String role, Collegue office) {
+        registeredOffices.put(role, office);
+        System.out.println("[Coordinator] Registered " + role);
+    }
  
     @Override
     public void registerStudent(Student student) {
@@ -100,9 +108,8 @@ class ResultCoordinator implements Mediator {
  
     @Override
     public void submitDepartmentConfirmation(String studentId) {
-        ProcessingState state = statusMap.get(studentId);
-        if (state != ProcessingState.REGISTERED) {
-            System.out.println("[Coordinator] REJECTED: departmental confirmation cannot be submitted before registration (" + studentId + ")");
+        if (!statusMap.containsKey(studentId)) {
+            System.out.println("[Coordinator] ERROR: Student " + studentId + " is not registered.");
             return;
         }
         statusMap.put(studentId, ProcessingState.DEPT_CONFIRMED);
@@ -111,6 +118,10 @@ class ResultCoordinator implements Mediator {
  
     @Override
     public void issueOfficeOrder(String studentId) {
+        if (!statusMap.containsKey(studentId)) {
+            System.out.println("[Coordinator] ERROR: Student " + studentId + " is not registered.");
+            return;
+        }
         ProcessingState state = statusMap.get(studentId);
         if (state != ProcessingState.DEPT_CONFIRMED) {
             System.out.println("[Coordinator] REJECTED: office order cannot be issued before departmental confirmation (" + studentId + ")");
@@ -123,6 +134,10 @@ class ResultCoordinator implements Mediator {
  
     @Override
     public void issueTestimonial(String studentId) {
+        if (!statusMap.containsKey(studentId)) {
+            System.out.println("[Coordinator] ERROR: Student " + studentId + " is not registered.");
+            return;
+        }
         ProcessingState state = statusMap.get(studentId);
         if (state != ProcessingState.OFFICE_ORDER_ISSUED) {
             System.out.println("[Coordinator] REJECTED: testimonial cannot be issued before the office order (" + studentId + ")");
@@ -135,6 +150,10 @@ class ResultCoordinator implements Mediator {
  
     @Override
     public void issueCertificateAndTranscript(String studentId) {
+        if (!statusMap.containsKey(studentId)) {
+            System.out.println("[Coordinator] ERROR: Student " + studentId + " is not registered.");
+            return;
+        }
         ProcessingState state = statusMap.get(studentId);
         if (state != ProcessingState.TESTIMONIAL_ISSUED) {
             System.out.println("[Coordinator] REJECTED: certificate/transcript cannot be issued before the testimonial (" + studentId + ")");
@@ -159,6 +178,9 @@ public class task2 {
         DepartmentOffice deptOffice = new DepartmentOffice(coordinator);
         COEOffice controller = new COEOffice(coordinator);
         DSW dsw = new DSW(coordinator);
+        coordinator.registerOffice("Department Office", deptOffice);
+        coordinator.registerOffice("Controller of Examinations", controller);
+        coordinator.registerOffice("DSW", dsw);
  
         Student student = new Student(coordinator, "2005001", "Abhi");
         student.register();
