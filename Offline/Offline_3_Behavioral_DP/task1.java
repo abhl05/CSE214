@@ -1,20 +1,20 @@
 import java.util.ArrayList;
-
-abstract class BDAlert {
-    ArrayList<Citizen> subscribers = new ArrayList<>();
+import java.util.HashMap;
+import java.util.Map;
+interface Publisher {
     
-    void subscribe(Citizen citizen) {
-        subscribers.add(citizen);
-    }
-
-    void unsubscribe(Citizen citizen) {
-        subscribers.remove(citizen);
-    }
-
-    abstract void notifySubscribers();
+    void subscribe(Observer citizen, String alertCategory); 
+    
+    void unsubscribe(Observer citizen, String alertCategory);
+    
+    void notifySubscribers(AlertInfo alertInfo);
 }
 
-// helper alert class to pass alert type to citizens
+interface Observer {
+    void update(AlertInfo alertInfo);
+    String getName();
+}
+
 class AlertInfo {
     private String alertTitle;
     private String alertCategory;
@@ -48,89 +48,104 @@ class AlertInfo {
 
 // Concrete alert classes
 
-class FloodAlert extends BDAlert {
+class BDAlert implements Publisher {
+    private Map<String, ArrayList<Observer>> subscribers = new HashMap<>();
+
     @Override
-    void notifySubscribers() {
-        for (Citizen citizen : subscribers) {
-            citizen.update(new AlertInfo("Flood Alert", "Flood", "Local Area", "High", "Evacuate immediately!"));
+    public void subscribe(Observer citizen, String alertCategory) {
+        subscribers.putIfAbsent(alertCategory, new ArrayList<>());
+        if (!subscribers.get(alertCategory).contains(citizen)) {
+            subscribers.get(alertCategory).add(citizen);
+            System.out.println(citizen.getName() + " subscribed to " + alertCategory + " alerts.");
         }
     }
 
-    void floodWarning() {
-        System.out.println("Flood warning issued!");
-        notifySubscribers();
-    }
-}
-
-class EarthquakeAlert extends BDAlert {
     @Override
-    void notifySubscribers() {
-        for (Citizen citizen : subscribers) {
-            citizen.update(new AlertInfo("Earthquake Alert", "Earthquake", "Local Area", "High", "Drop, cover, and hold on!"));
+    public void notifySubscribers(AlertInfo alertInfo) {
+        for (Observer citizen : subscribers.get(alertInfo.getAlertType())) {
+            citizen.update(alertInfo);
         }
     }
 
-    void earthquakeWarning() {
-        System.out.println("Earthquake warning issued!");
-        notifySubscribers();
-    }
-}
-
-class FireAlert extends BDAlert {
     @Override
-    void notifySubscribers() {
-        for (Citizen citizen : subscribers) {
-            citizen.update(new AlertInfo("Fire Alert", "Fire", "Local Area", "High", "Evacuate immediately!"));
+    public void unsubscribe(Observer citizen, String alertCategory) {
+        if (subscribers.containsKey(alertCategory)) {
+            subscribers.get(alertCategory).remove(citizen);
+            System.out.println(citizen.getName() + " unsubscribed from " + alertCategory + " alerts.");
         }
     }
-
-    void fireWarning() {
-        System.out.println("Fire warning issued!");
-        notifySubscribers();
-    }
 }
 
-interface Citizen {
-    void update(AlertInfo alertInfo);
-}
 
 // Example implementation of a Citizen
-class LocalResident implements Citizen {
+class Citizen implements Observer {
     private String name;
+    private ArrayList<AlertInfo> notifs = new ArrayList<>();
 
-    LocalResident(String name) {
+    public Citizen(String name) {
         this.name = name;
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override
     public void update(AlertInfo alertInfo) {
-        System.out.println(name + " received " + alertInfo.getAlertType() + " alert.");
-        System.out.println(alertInfo);
+        notifs.add(alertInfo);
+        System.out.println(name + " received " + alertInfo.toString());
+    }
+
+    public void displayNotifications() {
+        System.out.println(name + "'s notifications history:");
+        if(notifs.isEmpty()) {
+            System.out.println("No notifications received.");
+            return;
+        }
+        for (AlertInfo alert : notifs) {
+            System.out.println(alert);
+        }
     }
 }
 
 public class task1 {
     public static void main(String[] args) {
-        // Create alert instances
-        FloodAlert floodAlert = new FloodAlert();
-        EarthquakeAlert earthquakeAlert = new EarthquakeAlert();
-        FireAlert fireAlert = new FireAlert();
-
-        // Create citizen instances
-        LocalResident resident1 = new LocalResident("Alice");
-        LocalResident resident2 = new LocalResident("Bob");
-
-        // Subscribe citizens to alerts
-        floodAlert.subscribe(resident1);
-        earthquakeAlert.subscribe(resident1);
-        fireAlert.subscribe(resident2);
-
-        // Trigger alerts
-        floodAlert.floodWarning();
-        earthquakeAlert.earthquakeWarning();
-        fireAlert.fireWarning();
-        // Unsubscribe a citizen and trigger another alert
-        floodAlert.unsubscribe(resident1);
-        floodAlert.floodWarning();
+        BDAlert system = new BDAlert();
+ 
+        // 1. Register citizens
+        Citizen abhi  = new Citizen("Abhi");
+        Citizen mina  = new Citizen("Mina");
+        Citizen karim = new Citizen("Karim");
+ 
+        // 2. Subscribe citizens to categories
+        system.subscribe(abhi, "EARTHQUAKE");
+        system.subscribe(abhi, "FLOOD");
+        system.subscribe(mina, "FIRE");
+        system.subscribe(karim, "FLOOD");
+        system.subscribe(karim, "FIRE");
+ 
+        // 4 & 5. Publish alerts - one per category - only subscribers get notified
+        system.notifySubscribers(new AlertInfo("Magnitude 5.6 tremor", "EARTHQUAKE", "Chittagong", "HIGH", "Move to open ground"));
+        system.notifySubscribers(new AlertInfo("Rising water levels", "FLOOD", "Sylhet", "MODERATE", "Move valuables to higher floor"));
+        system.notifySubscribers(new AlertInfo("Market fire outbreak", "FIRE", "Dhaka", "CRITICAL", "Evacuate immediately"));
+ 
+        // 3. Update subscription: Karim unsubscribes from FLOOD, subscribes to EARTHQUAKE
+        System.out.println("\n[SYSTEM] Karim unsubscribes from FLOOD, subscribes to EARTHQUAKE");
+        system.unsubscribe(karim, "FLOOD");
+        system.subscribe(karim, "EARTHQUAKE");
+ 
+        // 6. A newly registered/subscribed citizen must only receive FUTURE alerts
+        Citizen rina = new Citizen("Rina");
+        system.subscribe(rina, "FLOOD");
+ 
+        // Publish more alerts to verify the subscription update and the "future alerts only" rule
+        system.notifySubscribers(new AlertInfo("Flash flood warning", "FLOOD", "Sunamganj", "HIGH", "Avoid riverbanks"));
+        system.notifySubscribers(new AlertInfo("Aftershock detected", "EARTHQUAKE", "Chittagong", "MODERATE", "Stay alert"));
+ 
+        // 7. Display notifications received by each citizen
+        abhi.displayNotifications();
+        mina.displayNotifications();
+        karim.displayNotifications();  // should show FLOOD(Sylhet)+FIRE(Dhaka) then EARTHQUAKE(Aftershock), NOT the flash flood
+        rina.displayNotifications();   // should show ONLY the flash flood warning, not the earlier flood alert
     }
 }
