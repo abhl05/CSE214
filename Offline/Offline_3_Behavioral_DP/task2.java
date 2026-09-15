@@ -171,7 +171,7 @@ class ResultCoordinator implements Mediator {
 }
 
 
-public class task2 {
+public class Task2 {
     public static void main(String[] args) {
         Mediator coordinator = new ResultCoordinator();
  

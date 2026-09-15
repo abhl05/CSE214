@@ -48,7 +48,6 @@ class AlertInfo {
     }
 }
 
-// Concrete alert classes
 
 class BDAlert implements Publisher {
     private List<Observer> registeredCitizens = new ArrayList<>();
@@ -92,7 +91,6 @@ class BDAlert implements Publisher {
 }
 
 
-// Example implementation of a Citizen
 class Citizen implements Observer {
     private String name;
     private ArrayList<AlertInfo> notifs = new ArrayList<>();
@@ -123,7 +121,7 @@ class Citizen implements Observer {
     }
 }
 
-public class task1 {
+public class Task1 {
     public static void main(String[] args) {
         BDAlert system = new BDAlert();
  
@@ -164,7 +162,7 @@ public class task1 {
         // 7. Display notifications received by each citizen
         abhi.displayNotifications();
         mina.displayNotifications();
-        karim.displayNotifications();  // should show FLOOD(Sylhet)+FIRE(Dhaka) then EARTHQUAKE(Aftershock), NOT the flash flood
-        rina.displayNotifications();   // should show ONLY the flash flood warning, not the earlier flood alert
+        karim.displayNotifications();  
+        rina.displayNotifications();   
     }
 }
